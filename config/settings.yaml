@@ -1,0 +1,21 @@
+# SRC-Hunter 配置示例
+llm:
+  provider: hy3            # hy3 | mock
+  api_key: ""              # 或用环境变量 HY3_API_KEY
+  base_url: https://tokenhub.tencentmaas.com/v1
+  price_per_1k_prompt: 0.0005
+  price_per_1k_completion: 0.002
+
+sast:
+  enabled: true
+  engine: semgrep
+  config: p/ci            # p/ci / auto / 自定义规则目录
+
+pipeline:
+  mode: whitebox          # whitebox（代码审计） | graybox（活靶）
+  max_files: 200
+  max_rounds_per_file: 4
+  verify_poc: false        # 真打验证开关（仅脱敏/授权环境开启）
+  budget_usd: 5.0
+  # ground_truth: ./demo/vuln_sample/ground_truth.json
+  # target_url: http://target.example.com

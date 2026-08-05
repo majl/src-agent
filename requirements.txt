@@ -1,0 +1,8 @@
+openai>=1.30
+pydantic>=2.5
+pyyaml>=6.0
+requests>=2.31
+jedi>=0.19
+rich>=13.0
+tenacity>=8.2
+# 可选（SAST 引擎）：pip install semgrep 或 brew install semgrep

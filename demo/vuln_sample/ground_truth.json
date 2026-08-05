@@ -1,0 +1,10 @@
+[
+  {"file": "app.py", "line": 17, "vuln_type": ""},
+  {"file": "app.py", "line": 26, "vuln_type": ""},
+  {"file": "app.py", "line": 33, "vuln_type": ""},
+  {"file": "app.py", "line": 41, "vuln_type": ""},
+  {"file": "app.py", "line": 49, "vuln_type": ""},
+  {"file": "user_service.py", "line": 7, "vuln_type": ""},
+  {"file": "config.py", "line": 3, "vuln_type": ""},
+  {"file": "config.py", "line": 4, "vuln_type": ""}
+]
