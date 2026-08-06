@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 import time
 from dataclasses import dataclass, field
 from typing import Optional
@@ -63,7 +64,7 @@ class HY3Client:
             from openai import OpenAI
             self._client = OpenAI(api_key=cfg.api_key, base_url=cfg.base_url, timeout=cfg.timeout)
         elif cfg.provider == "hy3" and not cfg.api_key:
-            print("[warn] 未检测到 HY3_API_KEY，自动降级为 mock 模式（仅演示流水线）。")
+            print("[warn] 未检测到 HY3_API_KEY，自动降级为 mock 模式（仅演示流水线）。", file=sys.stderr)
             self.cfg.provider = "mock"
 
     @property

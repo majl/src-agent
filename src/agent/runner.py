@@ -9,7 +9,8 @@
 """
 from __future__ import annotations
 
-from typing import Optional
+import sys
+from typing import Callable, Optional
 
 from .base import BaseAgent
 from .bridge import Bridge
@@ -22,6 +23,7 @@ def run_hosted(
     unique_code: str,
     use_hint: bool = False,
     verbose: bool = True,
+    abort_check: Optional[Callable[[], bool]] = None,
 ) -> SolveResult:
     """对单题执行托管解题闭环，返回聚合结果。
 
@@ -52,7 +54,7 @@ def run_hosted(
                            log=log + ["[bridge] 题目无可用入口地址（可能未 start 容器）"])
 
     if verbose:
-        print(f"[runner] 解题 {unique_code} 入口={spec.target_url}")
+        print(f"[runner] 解题 {unique_code} 入口={spec.target_url}", file=sys.stderr)
 
     # 2) solve：Solver 自主解题，返回 flag 候选
     result = agent.solve(spec)
@@ -61,6 +63,9 @@ def run_hosted(
     # 3) submit_flag：逐个提交候选，平台裁定正确性
     submitted_correct = 0
     for flag in result.flags:
+        if abort_check and abort_check():
+            log.append("[bridge] 收到 abort，停止提交剩余候选")
+            break
         try:
             r = bridge.submit_flag(unique_code, flag)
         except Exception as e:  # noqa
@@ -73,6 +78,12 @@ def run_hosted(
             log.append(f"[bridge] 提交 {flag} 不正确（候选被平台驳回，已抑制误报）")
 
     # 4) is_completed：检查题目是否全部完成
+    if abort_check and abort_check():
+        result.success = submitted_correct > 0
+        result.log = log
+        if verbose:
+            print(f"[runner] {unique_code} 被 abort，正确提交 {submitted_correct} 个 flag", file=sys.stderr)
+        return result
     try:
         done = bridge.is_completed(unique_code)
     except Exception:
@@ -80,5 +91,5 @@ def run_hosted(
     result.success = done or submitted_correct > 0
     result.log = log
     if verbose:
-        print(f"[runner] {unique_code} 正确提交 {submitted_correct}/{len(result.flags)} 个 flag，完成={done}")
+        print(f"[runner] {unique_code} 正确提交 {submitted_correct}/{len(result.flags)} 个 flag，完成={done}", file=sys.stderr)
     return result

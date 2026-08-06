@@ -34,6 +34,12 @@ from ..tools.webscan import scan_assets
 from ..tools.cloud import scan_cloud
 from ..tools.binary import scan_binary
 from ..tools.killchain import scan_killchain_stage, build_killchain, TOTAL_PHASES
+from .knowledge import (
+    retrieve_for_findings,
+    retrieve_for_vuln,
+    retrieve as _kb_retrieve,
+    knowledge_available,
+)
 
 # 优先级：命令注入/RCE 最优先，其次未授权/越权，再次业务逻辑
 _PRIORITY = {
@@ -73,10 +79,13 @@ class RedTeamAgent:
         llm: Optional[HY3Client] = None,
         use_llm: Optional[bool] = None,
         budget_usd: float = 5.0,
+        use_rag: bool = True,
     ):
         self.client = client
         self.llm = llm
         self.budget_usd = budget_usd
+        # RAG 知识增强：默认开启；知识库缺失时自动降级为无增强（不阻断）。
+        self.use_rag = bool(use_rag)
         # 只要注入了 HY3 客户端（含 mock 离线模式）即开启 LLM 决策路径；
         # 仅当显式 use_llm=False 时强制纯启发式。
         if use_llm is None:
@@ -92,6 +101,19 @@ class RedTeamAgent:
 
     def _llm_on(self) -> bool:
         return self.use_llm and self.llm is not None and self._within_budget()
+
+    # ---------- RAG 知识增强助手 ----------
+    @staticmethod
+    def _augment_system(base: str, kb_ctx: str) -> str:
+        """把离线安全技能知识拼接到 system 提示词尾部（缺失则原样返回）。"""
+        if not kb_ctx:
+            return base
+        return (
+            base
+            + "\n\n# 参考攻击知识（检索自离线安全技能库 CyberSecurity-Skills，仅用于启发利用手法；"
+            + "严格限于授权靶场使用，不得用于未授权目标）\n"
+            + kb_ctx
+        )
 
     # ---------- 单靶解题 ----------
     def solve_target(
@@ -113,6 +135,12 @@ class RedTeamAgent:
 
         assets = recon_target(target_url)
         log.append(f"[侦察] 发现 {len(assets)} 个可达资产")
+
+        # RAG 知识增强状态（接入失败则自动降级，不阻断流水线）
+        if self.use_rag:
+            log.append(
+                f"[RAG] 安全技能知识增强：{'已接入 CyberSecurity-Skills' if knowledge_available() else '知识库缺失，已降级为无增强'}"
+            )
 
         # 决策点①：LLM 资产攻击价值排序（fast 档）
         if self._llm_on():
@@ -256,8 +284,9 @@ class RedTeamAgent:
                 f"{a.url} | {a.status} | {','.join(a.tech) or '-'} | {a.note or '-'}"
                 for a in assets
             )
+            kb_ctx = _kb_retrieve("信息搜集 侦察 资产发现 攻击面 入口识别", top=2) if self.use_rag else ""
             msgs = [
-                {"role": "system", "content": RECON_RANK_SYSTEM},
+                {"role": "system", "content": self._augment_system(RECON_RANK_SYSTEM, kb_ctx)},
                 {"role": "user", "content": RECON_RANK_USER.format(target=target_url, assets=lines)},
             ]
             resp = self.llm.chat(msgs, tier="fast")
@@ -281,8 +310,9 @@ class RedTeamAgent:
                 f"{f.file} | {f.evidence[:60] or '-'}"
                 for f in findings
             )
+            kb_ctx = retrieve_for_findings(findings, max_blocks=3) if self.use_rag else ""
             msgs = [
-                {"role": "system", "content": EXPLOIT_PLAN_SYSTEM},
+                {"role": "system", "content": self._augment_system(EXPLOIT_PLAN_SYSTEM, kb_ctx)},
                 {"role": "user", "content": EXPLOIT_PLAN_USER.format(target=target_url, findings=items)},
             ]
             resp = self.llm.chat(msgs, tier="deep")
@@ -322,8 +352,9 @@ class RedTeamAgent:
     # ---------- 决策点④：自定义利用构造 ----------
     def _llm_craft_exploit(self, finding: Finding, target_url: str, last_body: str) -> Optional[str]:
         try:
+            kb_ctx = retrieve_for_vuln(finding.vuln_type.name, top=2) if self.use_rag else ""
             msgs = [
-                {"role": "system", "content": EXPLOIT_CRAFT_SYSTEM},
+                {"role": "system", "content": self._augment_system(EXPLOIT_CRAFT_SYSTEM, kb_ctx)},
                 {"role": "user", "content": EXPLOIT_CRAFT_USER.format(
                     target=target_url,
                     vuln_type=finding.vuln_type.value,
@@ -355,8 +386,9 @@ class RedTeamAgent:
                 f"{f.title} | {(f.evidence or '')[:80]}"
                 for f in findings
             )
+            kb_ctx = retrieve_for_findings(findings, max_blocks=3) if self.use_rag else ""
             msgs = [
-                {"role": "system", "content": KILLCHAIN_SYNTH_SYSTEM},
+                {"role": "system", "content": self._augment_system(KILLCHAIN_SYNTH_SYSTEM, kb_ctx)},
                 {"role": "user", "content": KILLCHAIN_SYNTH_USER.format(
                     target=target_url, chain=chain_lines,
                     flags="; ".join(flags) or "（无）",
