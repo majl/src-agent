@@ -129,6 +129,7 @@ SRC-Hunter 已封装为符合 **tsecbench 跑分平台要求格式的 AI Agent �
 **平台要求的 Agent 格式要点**
 - 标准数据契约：`ChallengeSpec`（题目规格，对齐 `/openapi/v1/challenges` 与 Host Bridge `challenge_get_state`）、`SolveResult`（解题结果）。
 - 标准交互协议：**Host Bridge（JSONL over stdin/stdout）**，Solver 只能通过四个标准动作与平台通信，由宿主代理转发竞赛 API——这是 tsecbench「托管运行」模式的本质（参考真实榜首 agent BreachWeave 架构，动作名 `challenge_get_state` / `challenge_get_hint` / `challenge_submit_flag` / `challenge_is_completed`）。
+- ✅ **协议选型已确认**：本项目以 **Host Bridge（JSONL over stdin/stdout）** 作为对接 tsecbench 的官方接入协议（而非 hunxiang 的 MCP/REST）。四个动作名严格对齐官方规范，宿主侧由 `HostHarness` 模拟、Solver 侧由 `StdioBridge` + `hosted_solver.py` 实现。
 - 职责边界：Solver 只解题、返回 flag 候选；**提交动作不属于 solver**，由 bridge 统一执行，天然抑制误提交。
 - 协议纯净性：托管 Solver 的 stdout **仅允许协议 JSONL**，所有诊断日志一律写到 stderr（已在 `runner.py` / `llm/client.py` 整改）。
 - 配置：复制 `.env.example` 为 `.env`，填入 `BENCHMARK_TOKEN` / `HY3_API_KEY`。
@@ -142,6 +143,9 @@ python main.py --code <unique_code>
 
 # SDK / 托管接入：真实 spawn 托管 Solver 子进程 + HostHarness 驱动（端到端验证接线）
 python -m src.agent.selftest_stdio --mock --all
+
+# Host Bridge 协议层冒烟测试（纯标准库，不依赖 requests/pydantic，验证 JSONL 双向通道与四动作契约）
+python scripts/hostbridge_smoke.py
 ```
 
 **Docker 部署（平台托管运行推荐）**：仓库含 `Dockerfile`，构建后平台可直接以子进程运行
