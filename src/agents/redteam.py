@@ -34,6 +34,7 @@ from ..tools.webscan import scan_assets
 from ..tools.cloud import scan_cloud
 from ..tools.binary import scan_binary
 from ..tools.killchain import scan_killchain_stage, build_killchain, TOTAL_PHASES
+from ..tools.evasion import scan_evasion
 from .knowledge import (
     retrieve_for_findings,
     retrieve_for_vuln,
@@ -69,6 +70,11 @@ _PRIORITY = {
     VulnType.KILLCHAIN_LATERAL: 1,
     VulnType.KILLCHAIN_RECON: 2,
     VulnType.KILLCHAIN_COLLECTION: 2,
+    # 规避维度（EVASION，权重 10%）：WAF 编码绕过常直接拿 flag，最高优先级；
+    # 防御侦测/反取证次之
+    VulnType.EVASION_WAF_BYPASS: 0,
+    VulnType.EVASION_DEFENSE_DETECTED: 1,
+    VulnType.EVASION_ANTI_FORENSICS: 2,
 }
 
 
@@ -173,6 +179,13 @@ class RedTeamAgent:
         if killchain_findings:
             findings += killchain_findings
             log.append(f"[杀伤链检测] 命中 {len(killchain_findings)} 个多阶段链节点（KILLCHAIN 维度）")
+
+        # 规避维度检测（EVASION 评分维度，权重 10%）：防御机制侦测 / WAF 编码绕过 /
+        # 反取证痕迹清除。靶机若提供 /range/evasion/* 端点则自动分析，否则跳过。
+        evasion_findings = scan_evasion(target_url)
+        if evasion_findings:
+            findings += evasion_findings
+            log.append(f"[规避检测] 命中 {len(evasion_findings)} 个防御规避疑似风险（EVASION 维度）")
 
         # 启发式优先级（始终先排一遍，作为 LLM 规划的兜底基线）
         findings = self._prioritize(findings)

@@ -46,6 +46,10 @@ class VulnType(str, Enum):
     KILLCHAIN_CRED_ACCESS = "杀伤链-凭据访问"
     KILLCHAIN_COLLECTION = "杀伤链-信息收集"
     KILLCHAIN_IMPACT = "杀伤链-影响/渗出"
+    # 规避维度（对应 tsecbench EVASION 评分维度，权重 10%）：防御规避 / 反取证
+    EVASION_DEFENSE_DETECTED = "防御机制侦测(规避前置)"
+    EVASION_WAF_BYPASS = "WAF/签名规避(编码绕过)"
+    EVASION_ANTI_FORENSICS = "反取证/痕迹清除"
     OTHER = "其他"
 
 

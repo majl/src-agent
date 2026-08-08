@@ -87,6 +87,10 @@ _VULN_TO_PHASE: dict[VulnType, str] = {
     VulnType.KILLCHAIN_CRED_ACCESS: "cred_access",
     VulnType.KILLCHAIN_COLLECTION: "collection",
     VulnType.KILLCHAIN_IMPACT: "impact",
+    # 规避维度（EVASION）：防御规避贯穿攻击全程，按语义归入对应阶段
+    VulnType.EVASION_DEFENSE_DETECTED: "recon",
+    VulnType.EVASION_WAF_BYPASS: "execution",
+    VulnType.EVASION_ANTI_FORENSICS: "collection",
 }
 
 

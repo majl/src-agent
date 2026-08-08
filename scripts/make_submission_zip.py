@@ -18,6 +18,7 @@ EXCLUDE_OUT_DIRS = {
     "out-agent", "out-agent-kc", "out-bench", "out-bench-nollm",
     "out-bench-regress", "out-binary", "out-binary-bench", "out-cloud",
     "out-demo", "out-killchain", "out-regress", "out-target", "out-target-range",
+    "out-evasion",  # 防御规避维度 CLI 临时输出，非验证证据，排除
 }
 
 

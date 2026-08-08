@@ -339,6 +339,62 @@ def cmd_killchain(args):
     return 0
 
 
+def cmd_evasion(args):
+    """防御规避维度分析：对目标 / 题目跑全闭环，重点输出 EVASION 维度发现。"""
+    from src.agents.redteam import RedTeamAgent
+    from src.llm.client import HY3Client, LLMConfig
+    from src.config import LLMTier
+    from src.platform.tsecbench_client import TsecBenchClient
+    from src.models import VulnType
+
+    use_llm = not args.no_llm
+    llm = None
+    if use_llm:
+        llm = HY3Client(LLMConfig(
+            provider="mock",
+            api_key="mock",
+            base_url="https://tokenhub.tencentmaas.com/v1",
+            tiers={"fast": LLMTier("fast", model="hy3", reasoning=False, temperature=0.2, max_tokens=2048),
+                   "deep": LLMTier("deep", model="hy3", reasoning=True, temperature=0.4, max_tokens=4096)},
+        ))
+
+    if args.mock:
+        _ensure_mock()
+        client = TsecBenchClient(base_url="http://127.0.0.1:8800", token="mock", timeout=60)
+        agent = RedTeamAgent(client=client, llm=llm, use_llm=use_llm)
+        code = args.code or "EVASION-DEMO-001"
+        print(f"[*] 防御规避分析（mock 题目 {code}）")
+        result = agent.solve_challenge(code, close=not args.no_close)
+    else:
+        if not args.target:
+            print("[!] 请提供 --target <range根URL> 或 --mock --code <题目>")
+            return 1
+        print(f"[*] 防御规避分析目标：{args.target}")
+        agent = RedTeamAgent(client=None, llm=llm, use_llm=use_llm)
+        result = agent.solve_target(args.target, submit=False)
+
+    eva_types = {VulnType.EVASION_DEFENSE_DETECTED, VulnType.EVASION_WAF_BYPASS, VulnType.EVASION_ANTI_FORENSICS}
+    eva_names = {t.name for t in eva_types}
+    eva_values = {t.value for t in eva_types}
+    findings = result.get("findings_detail", [])
+    eva = [f for f in findings
+           if f.get("vuln_type") in eva_values
+           or str(f.get("vuln_type")) in eva_names
+           or any(k in str(f.get("vuln_type", "")) for k in ("EVASION", "规避", "WAF"))]
+    print("\n=== 防御规避报告 (EVASION) ===")
+    print(f"  规避发现数 : {len(eva)} / 全部发现 {len(findings)}")
+    print(f"  flag 候选  : {result.get('flags_all')}")
+    for f in eva:
+        print(f"    - {f.get('vuln_type')} | {f.get('severity')} | conf={f.get('confidence')}")
+        if f.get('evidence'):
+            print(f"        evidence: {f['evidence'][:120]}")
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "evasion_report.json").write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"\n[+] 完整结果已写出：{out}/evasion_report.json")
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser(prog="src-hunter", description="SRC 定向漏洞挖掘 Agent (HY3 + 黑盒红队)")
     sub = ap.add_subparsers(dest="cmd")
@@ -401,6 +457,14 @@ def main():
     kp.add_argument("--no-llm", action="store_true", help="关闭 HY3 决策（纯启发式叙事）")
     kp.add_argument("--out", "-o", default="./out-killchain")
 
+    ep = sub.add_parser("evasion", help="防御规避分析（对应 EVASION 评分维度，权重 10%）")
+    ep.add_argument("--target", default=None, help="靶机根 URL（如 http://host:port/range）")
+    ep.add_argument("--mock", action="store_true", help="使用本地 mock 平台")
+    ep.add_argument("--code", default=None, help="mock 题目 unique_code（如 EVASION-DEMO-001）")
+    ep.add_argument("--no-close", action="store_true", help="解题后不关闭靶机")
+    ep.add_argument("--no-llm", action="store_true", help="关闭 HY3 决策（纯启发式）")
+    ep.add_argument("--out", "-o", default="./out-evasion")
+
     args = ap.parse_args()
     if not args.cmd:
         ap.print_help()
@@ -420,6 +484,8 @@ def main():
         return cmd_binary(args)
     if args.cmd == "killchain":
         return cmd_killchain(args)
+    if args.cmd == "evasion":
+        return cmd_evasion(args)
     return 1
 
 

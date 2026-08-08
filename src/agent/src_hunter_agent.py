@@ -17,16 +17,16 @@ from .challenge import ChallengeSpec, SolveResult
 class SRC_HunterAgent(BaseAgent):
     """黑盒自主渗透解题器，HY3 驱动三决策点（资产排序/利用规划/flag 判定）+ 杀伤链叙事合成。
 
-    覆盖 tsecbench 六大维度中的 WEB / EXPLOIT / CLOUD / BINARY / KILLCHAIN 五维：
-    侦察 → Web 漏洞扫描 → 云维度检测 → 二进制检测 → 杀伤链多阶段游走 → 优先级排序 →
-    按序 PoC 真实利用提取 flag → 返回全部候选（由 bridge 提交）。
+    覆盖 tsecbench 六大维度：WEB / EXPLOIT / CLOUD / BINARY / KILLCHAIN / EVASION：
+    侦察 → Web 漏洞扫描 → 云维度检测 → 二进制检测 → 杀伤链多阶段游走 → 防御规避检测
+    → 优先级排序 → 按序 PoC 真实利用提取 flag → 返回全部候选（由 bridge 提交）。
     """
 
     name = "SRC-Hunter"
     version = "1.0.0"
     author = "BSRC-Agent+ Challenge Team"
     description = (
-        "自动化红队渗透 Agent：HY3 驱动决策，覆盖 WEB/EXPLOIT/CLOUD/BINARY/KILLCHAIN 维度，"
+        "自动化红队渗透 Agent：HY3 驱动决策，覆盖 WEB/EXPLOIT/CLOUD/BINARY/KILLCHAIN/EVASION 六维，"
         "纯 Python 工具链 + 分级 LLM 调用 + 成本护栏。"
     )
 

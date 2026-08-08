@@ -41,7 +41,9 @@ _VULN_QUERY: Dict[str, str] = {
     "INSECURE_DESERIAL": "不安全反序列化 反序列化漏洞 利用链",
     "LOGIC_FLAW": "业务逻辑缺陷 支付绕过 薅羊毛 短信轰炸",
     "SECRET_LEAK": "硬编码凭据 密钥泄露 配置文件 环境变量",
-    "CLOUD_METADATA": "云安全 元数据服务 IMDS 169.254.169.254 SSRF 取角色",
+    # 优化（P2）：去掉泛词"云安全"（易命中多云策略评估类技能），改为元数据/IMDS 中心化表述，
+    # 实测 Top1 由"多云安全策略评估"切换为"SSRF 服务端请求伪造"（该技能正文覆盖云元数据 API 利用）。
+    "CLOUD_METADATA": "实例元数据服务 IMDS 169.254.169.254 SSRF 云元数据 角色凭证 临时安全令牌",
     "CLOUD_UNAUTH_API": "云安全 未授权 API 访问 对象存储 公有桶 列举",
     "CLOUD_CONTAINER_ESCAPE": "容器逃逸 特权容器 挂载逃逸 内核漏洞 Docker",
     "BINARY_STACK_OVERFLOW": "栈溢出 缓冲区溢出 ROP PWN 利用 控制流劫持",
@@ -55,6 +57,10 @@ _VULN_QUERY: Dict[str, str] = {
     "KILLCHAIN_CRED_ACCESS": "凭据访问 凭证窃取 哈希 dump 票据 浏览器密码",
     "KILLCHAIN_COLLECTION": "信息收集 目标枚举 数据定位 屏幕抓取",
     "KILLCHAIN_IMPACT": "影响 渗出 数据外传 目标达成 勒索 清除",
+    # 规避维度（EVASION，权重 10%）：对应知识库 08-痕迹清除-CoveringTracks（MITRE Defense Evasion）
+    "EVASION_DEFENSE_DETECTED": "防御规避 检测 安全机制 WAF 入侵检测 日志审计 EDR 取证",
+    "EVASION_WAF_BYPASS": "WAF 绕过 编码绕过 混淆 payload Base64 签名规避 特征变形",
+    "EVASION_ANTI_FORENSICS": "痕迹清除 反取证 日志清除 时间戳篡改 防御规避 MITRE T1070 T1562",
 }
 
 

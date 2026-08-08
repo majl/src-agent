@@ -8,7 +8,7 @@
 | 模式 | 输入 | 流程 | 命中评测维度 |
 |------|------|------|--------------|
 | 白盒代码审计 | 代码仓库 | SAST(Semgrep) + HY3 多轮上下文审计 + Triage 降误报 + PoC + 六项指标 | Web 漏洞挖掘（代码侧） |
-| 黑盒自主渗透 | 靶场 URL | 侦察 → Web 扫描 → 云维度检测 → 二进制维度检测 → 杀伤链多阶段游走 → PoC 真实利用提取 flag → tsecbench 提交 | Web 漏洞挖掘 / 漏洞利用 / 云维度(CLOUD) / 二进制(BINARY) / 杀伤链(KILLCHAIN) |
+| 黑盒自主渗透 | 靶场 URL | 侦察 → Web 扫描 → 云维度检测 → 二进制维度检测 → 杀伤链多阶段游走 → 防御规避检测 → PoC 真实利用提取 flag → tsecbench 提交 | Web 漏洞挖掘 / 漏洞利用 / 云维度(CLOUD) / 二进制(BINARY) / 杀伤链(KILLCHAIN) / 防御规避(EVASION) |
 
 ## 2. 核心能力
 
@@ -22,6 +22,7 @@
 | 黑盒云维度检测 | 云元数据 IMDS(169.254.169.254) / 未授权云 API(K8s/Docker/etcd) / 容器逃逸线索（纯 Python 兜底） |
 | 黑盒二进制维度检测 | 二进制静态脆弱性分析：checksec 保护机制 / 危险函数(gets/strcpy/system) / 敏感字符串 / 栈溢出·格式化字符串·硬编码flag 启发式判定（`src/tools/binary.py`，pwntools/strings 增强） |
 | **黑盒杀伤链维度** | 把离散漏洞点串成连贯多阶段攻击链：`build_killchain` 阶段映射（侦察→初始立足→执行→提权→横向→凭据→收集→影响）+ 覆盖率/链深度评估；`scan_killchain_stage` 多阶段靶机游走（entry→internal→flag）；HY3 决策点⑤润色攻击叙事 |
+| **黑盒防御规避维度（EVASION，权重 10%）** | 识别靶机防御机制（WAF/审计日志/EDR）并采用规避/反取证手法：WAF 编码绕过（Base64 payload 规避签名）提取 flag、反取证痕迹清除（`src/tools/evasion.py`，RAG 接 CyberSecurity-Skills 08-痕迹清除模块） |
 | PoC 真实利用 | 构造并发送真实 HTTP 请求、提取 flag{...}，不再是文本 PoC |
 | 平台原生接入 | tsecbench /openapi/v1 全套（list/start/hint/submit/close） |
 | **黑盒 HY3 决策** | 三个决策点由 HY3 驱动：①资产攻击价值排序(fast) ②利用优先级与手法规划(deep) ③响应 flag 判定(fast)，标准模板未命中时④HY3 构造自定义利用 |
@@ -73,6 +74,13 @@ python cli.py bench --mock --code KILLCHAIN-DEMO-001 --out ./out-killchain   # �
 python cli.py killchain --mock --code KILLCHAIN-DEMO-001   # 重点输出攻击杀伤链报告（不提交，可加 --no-llm 看启发式差异）
 python cli.py killchain --target http://127.0.0.1:8800/range   # 分析任意靶机的杀伤链
 python scripts/killchain_scan.py --mock --code KILLCHAIN-DEMO-001   # 独立脚本：仅分析杀伤链（不提交）
+```
+
+### 3.2e 防御规避维度（EVASION，权重 10%）：防御机制侦测 + WAF 编码绕过 + 反取证
+```bash
+python cli.py bench --mock --code EVASION-DEMO-001 --out ./out-evasion   # 识别防御→编码绕过提取 flag + 提交
+python cli.py evasion --mock --code EVASION-DEMO-001   # 重点输出防御规避报告（不提交，可加 --no-llm 看启发式差异）
+python cli.py evasion --target http://127.0.0.1:8800/range   # 分析任意靶机的防御规避能力
 ```
 
 ### 3.3 对接真实 tsecbench 平台
